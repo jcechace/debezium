@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
+import io.fabric8.kubernetes.api.model.Container;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +74,13 @@ public class OperatorController {
     }
 
     public Deployment setAlwaysPullPolicy() {
+        LOGGER.info("Using 'Always' pull policy for all containers of deployment " + name + "'");
+        List<Container> containers = operator.getSpec().getTemplate().getSpec().getContainers();
+        containers.forEach( c -> c.setImagePullPolicy("Always"));
+        return operator;
+    }
+
+    public Deployment setOperandAlwaysPullPolicy() {
         return setEnvVar("STRIMZI_IMAGE_PULL_POLICY", "Always");
     }
 
@@ -83,7 +91,7 @@ public class OperatorController {
      * @return {@link Deployment} resource of the operator
      */
     public Deployment setEnvVar(String name, String val) {
-        LOGGER.info("Setting variable " + name + "=" + val + " on deployment '" + name + "'");
+        LOGGER.info("Setting variable " + name + "='" + val + "' on deployment '" + this.name + "'");
         ocpUtils.ensureHasEnv(operator, new EnvVar(name, val, null));
         return operator;
     }
