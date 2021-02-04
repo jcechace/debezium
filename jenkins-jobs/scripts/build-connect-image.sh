@@ -38,11 +38,18 @@ function process_image() {
     organisation=$3
 
     prefix_dbz="dbz"
-    prefix=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\1/p'`
-    name=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\2/p'`
-    tag=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\3/p'`
 
-    image=${prefix}-${name}:${tag}
+    if [[ "$source" =~ ^registry.redhat.io.*$ ]] ; then
+      name=`echo $source | sed -rn 's/.*\/[^\/]+\/(.*):(.*)$/\1/p'`
+      tag=`echo $source | sed -rn 's/.*\/[^\/]+\/(.*):(.*)$/\2/p'`
+      image=${name}:${tag}
+    else
+      prefix=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\1/p'`
+      name=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\2/p'`
+      tag=`echo $source | sed -rn 's/.*\/[^\/]+\/([^-]*)-(.*):(.*)$/\3/p'`
+      image=${prefix}-${name}:${tag}
+    fi
+
     image_dbz=${prefix_dbz}-${name}:${tag}
     target=${registry}/${organisation}/${image_dbz}
 
