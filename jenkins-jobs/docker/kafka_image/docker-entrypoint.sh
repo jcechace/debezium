@@ -10,11 +10,17 @@ case $1 in
     zookeeper)
         shift
         # Change the Zookeeper snapshot directory in zookeeper.properities file
-        sed -i "s|dataDir=.*|dataDir=${KAFKA_HOME}/data|" $KAFKA_HOME/config/zookeeper.properties
-        exec $KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties
+        sed -i "s|dataDir=.*|dataDir=${ZK_DATA}|" $KAFKA_HOME/config/zookeeper.properties
+        if [ -z "$1" ]; then
+            exec $KAFKA_HOME/bin/zookeeper-server-start.sh $KAFKA_HOME/config/zookeeper.properties
+        else
+            echo "Zookeeper can not have any arguments"        
+        fi
         ;;
     kafka)
         shift
+        # Set the diretory where the logs for kafka will be stored
+        sed -i "s|log.dirs=.*|log.dirs=${KAFKA_DATA}|" $KAFKA_HOME/config/server.properties
         if [ -z "$1" ]; then
             exec /scripts/kafka-start.sh start
         else
@@ -23,10 +29,12 @@ case $1 in
         ;;
     kafka-connect)
         shift
+        # Set the directory with debezium connector in config file
+        echo "plugin.path=${KAFKA_CONNECT_PLUGINS}" >> $KAFKA_HOME/config/connect-distributed.properties
         if [ -z "$1" ]; then
             exec /scripts/kafka-connect-start.sh start
         else
-            echo "Kafka-connect can not have any arguments other than start"        
+            exec /scripts/kafka-connect-start.sh "$@"        
         fi
         ;;
     *)    

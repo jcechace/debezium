@@ -81,7 +81,7 @@ unset SCALA_VERSION
 # Set up the classpath with all the plugins ...
 #
 if [ -z "$CONNECT_PLUGIN_PATH" ]; then
-    CONNECT_PLUGIN_PATH=$KAFKA_CONNECT_PLUGINS_DIR
+    CONNECT_PLUGIN_PATH=$KAFKA_CONNECT_PLUGINS
 fi
 echo "Plugins are loaded from $CONNECT_PLUGIN_PATH"
 
@@ -160,7 +160,7 @@ fi
 #
 # Make sure the directory for logs exists ...
 #
-mkdir -p $KAFKA_HOME/data/$KAFKA_BROKER_ID
+mkdir -p ${KAFKA_DATA}/$KAFKA_BROKER_ID
 
 # Process the argument to this container ...
 case $1 in
