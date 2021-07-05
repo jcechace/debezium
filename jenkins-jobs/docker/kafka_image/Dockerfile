@@ -3,15 +3,11 @@ FROM registry.access.redhat.com/ubi8:latest
 LABEL maintainer="Debezium QE"
 
 #
-# Set the version, home directory.
+# Set the source path and data directories.
 #
-ARG KAFKA_VERSION=2.7.0 \
-    ZK_VERSION=3.5.8 \
-    KAFKA_SOURCE_PATH=kafka-2.7.0
+ARG KAFKA_SOURCE_PATH=kafka-2.7.0
 
-ENV KAFKA_VERSION=$KAFKA_VERSION \
-    KAFKA_HOME=/opt/kafka \
-    ZK_VERSION=$ZK_VERSION \
+ENV KAFKA_HOME=/opt/kafka \
     ZK_DATA=/var/lib/zookeeper \
     KAFKA_DATA=/var/lib/kafka
 
@@ -20,9 +16,10 @@ ENV KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/connector-plugins
 	
 
 #
-# Install openjdk-11 and iproute 
+# Install openjdk-11, iproute and unzip
 #
 RUN dnf -y install java-11-openjdk 
+RUN dnf -y install unzip
 RUN dnf -y install iproute && dnf clean all
 
 #
@@ -50,12 +47,21 @@ RUN chown -R 1001:kafka $KAFKA_HOME && \
     chown -R 1001:kafka $ZK_DATA
 
 #
-# Copy Downstream Kafka
+# Add and unzip Kafka
 #
-COPY ${KAFKA_SOURCE_PATH} ${KAFKA_HOME}
+RUN mkdir /tmp/zipped_kafka /tmp/extracted_kafka
+ADD ${KAFKA_SOURCE_PATH} /tmp/zipped_kafka
+RUN unzip /tmp/zipped_kafka/*.zip -d /tmp/extracted_kafka
 
+#
+# Move kafka from directory nested in another directory to $KAFKA_HOME and delete tmp directories
+#
+RUN mv /tmp/extracted_kafka/*/* $KAFKA_HOME
+RUN rm -rf /tmp/zipped_kafka /tmp/extracted_kafka
 
-
+#
+# Setup original config directories
+#
 RUN mkdir $KAFKA_HOME/config.orig &&\
     mv $KAFKA_HOME/config/* $KAFKA_HOME/config.orig &&\
     chown -R 1001:kafka $KAFKA_HOME/config.orig
