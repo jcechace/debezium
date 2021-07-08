@@ -3,16 +3,17 @@ FROM registry.access.redhat.com/ubi8:latest
 LABEL maintainer="Debezium QE"
 
 #
-# Set the source path and data directories.
+# Set the source path for kafka, debezium connectors and data directories.
 #
-ARG KAFKA_SOURCE_PATH=kafka-2.7.0
+ARG KAFKA_SOURCE_PATH=./amq-streams-1.7.0.CR3-bin.zip \
+    DEBEZIUM_CONNECTORS=./debezium_connectors
 
 ENV KAFKA_HOME=/opt/kafka \
     ZK_DATA=/var/lib/zookeeper \
     KAFKA_DATA=/var/lib/kafka
 
 
-ENV KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/connector-plugins
+ENV KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
 	
 
 #
@@ -35,7 +36,7 @@ RUN mkdir $KAFKA_DATA && \
     mkdir $ZK_DATA
 
 #
-# Set up plugins directory
+# Set up new plugins directory
 #
 RUN mkdir "$KAFKA_CONNECT_PLUGINS"
 
@@ -58,6 +59,12 @@ RUN unzip /tmp/zipped_kafka/*.zip -d /tmp/extracted_kafka
 #
 RUN mv /tmp/extracted_kafka/*/* $KAFKA_HOME
 RUN rm -rf /tmp/zipped_kafka /tmp/extracted_kafka
+
+#
+# Add Debezium connectors to connector-plugns
+#
+RUN mkdir $KAFKA_HOME/connector-plugins
+COPY $DEBEZIUM_CONNECTORS/* $KAFKA_HOME/connector-plugins/
 
 #
 # Setup original config directories
