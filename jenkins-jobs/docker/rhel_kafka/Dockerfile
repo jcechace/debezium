@@ -1,20 +1,18 @@
-FROM registry.access.redhat.com/ubi8:latest
+ARG IMAGE=registry.access.redhat.com/ubi8:latest
+FROM $IMAGE
 
 LABEL maintainer="Debezium QE"
 
 #
 # Set the source path for kafka, debezium connectors and data directories.
 #
-ARG KAFKA_SOURCE_PATH=./amq-streams-1.7.0.CR3-bin.zip \
-    DEBEZIUM_CONNECTORS=./debezium_connectors
+ARG KAFKA_SOURCE_PATH
+ARG DEBEZIUM_CONNECTORS
 
 ENV KAFKA_HOME=/opt/kafka \
     ZK_DATA=/var/lib/zookeeper \
-    KAFKA_DATA=/var/lib/kafka
-
-
-ENV KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
-	
+    KAFKA_DATA=/var/lib/kafka \
+    KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
 
 #
 # Install openjdk-11, iproute and unzip
@@ -64,7 +62,7 @@ RUN rm -rf /tmp/zipped_kafka /tmp/extracted_kafka
 # Add Debezium connectors to connector-plugns
 #
 RUN mkdir $KAFKA_HOME/connector-plugins
-COPY $DEBEZIUM_CONNECTORS/* $KAFKA_HOME/connector-plugins/
+COPY $DEBEZIUM_CONNECTORS $KAFKA_HOME/connector-plugins/
 
 #
 # Setup original config directories
@@ -75,7 +73,7 @@ RUN mkdir $KAFKA_HOME/config.orig &&\
 
 
 # Remove unnecessary files
-RUN rm -f $KAFKA_HOME/libs/*-{sources,javadoc,scaladoc}.jar* 
+RUN rm -f $KAFKA_HOME/libs/*-{sources,javadoc,scaladoc}.jar*
 
 #
 # Allow random UID to use Kafka

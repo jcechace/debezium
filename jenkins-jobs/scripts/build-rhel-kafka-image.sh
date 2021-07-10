@@ -4,7 +4,7 @@ DOCKER_FILE=${DIR}/../docker/rhel_kafka/Dockerfile
 PLUGIN_DIR="plugins"
 EXTRA_LIBS=""
 
-OPTS=`getopt -o d:i:a:k:l:f:r:o: --long dir:,image:,archive-urls:,kafka-url:,libs:,dockerfile:,registry:,organisation:,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@"`
+OPTS=$(getopt -o d:i:a:k:l:f:r:o: --long dir:,image:,archive-urls:,kafka-url:,libs:,dockerfile:,registry:,organisation:,dest-creds:,src-creds:,img-output: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
 
@@ -31,38 +31,38 @@ done
 echo "Creating plugin directory ${PLUGIN_DIR}"
 mkdir -p "${PLUGIN_DIR}"
 
-pushd ${PLUGIN_DIR}
+pushd "${PLUGIN_DIR}"
 for archive in ${ARCHIVE_URLS}; do
     echo "[Processing] ${archive}"
-    curl -OJs ${archive} && unzip \*.zip && rm *.zip
-    connectors_version=`echo $archive | sed -rn 's/.*AMQ-CDC-(.*)/.*$/\1/p'`
+    curl -OJs "${archive}" && unzip \*.zip && rm *.zip
+    connectors_version=$(echo "$archive" | sed -rn 's/.*AMQ-CDC-(.*)/.*$/\1/p')
 done
 
 for input in ${EXTRA_LIBS}; do
     echo "[Processing] input"
-    lib=`echo ${input} | awk -F "::"  '{print $1}' | xargs`
-    dest=`echo ${input} |  awk -F "::"  '{print $2}' | xargs`
+    lib=$(echo ${input} | awk -F "::"  '{print $1}' | xargs)
+    dest=$(echo ${input} |  awk -F "::"  '{print $2}' | xargs)
 
-    curl -OJs ${lib}
+    curl -OJs "${lib}"
     if [[ "${lib}" =~ ^.*\.zip$ ]] ; then
         unzip -od ${dest} \*.zip && rm *.zip
     else
-        mv *.jar ${dest}
+        mv *.jar "${dest}"
     fi
 done
 popd
 
-echo "Copying Docker_entrypoint.sh and scripts to" ${BUILD_DIR}
-cp ${DIR}/../docker/rhel_kafka/* $BUILD_DIR
+echo "Copying Docker_entrypoint.sh and scripts to" "${BUILD_DIR}"
+cp "${DIR}"/../docker/rhel_kafka/* "$BUILD_DIR"
 
-amq-version=`echo $KAFKA_URL | sed -rn 's/.*AMQ-STREAMS-(.*)/.*$/\1/p'`
+amq-version=$(echo "${KAFKA_URL}" | sed -rn 's/.*AMQ-STREAMS-(.*)/.*$/\1/p')
 image_dbz=debezium-testing-rhel8:amq-${amq-version}-dbz-${connectors_version}
 target=${REGISTRY}/${ORGANISATION}/${image_dbz}
 
-pushd $BUILD_DIR
+pushd "${BUILD_DIR}"
 echo "[Build] Building ${image_dbz} from ${IMAGE}"
-docker build -f "$DOCKER_FILE" . -t "$target" --build-arg IMAGE=${IMAGE} --build-arg KAFKA_SOURCE_PATH=${KAFKA_URL} --build-arg DEBEZIUM_CONNECTORS=${PLUGIN_DIR}
-popd $BUILD_DIR
+docker build -f "$DOCKER_FILE" . -t "$target" --build-arg IMAGE="${IMAGE}" --build-arg KAFKA_SOURCE_PATH="${KAFKA_URL}" --build-arg DEBEZIUM_CONNECTORS="${PLUGIN_DIR}"
+popd "${BUILD_DIR}"
 echo "[Build] Pushing image ${target}"
 skopeo --override-os "linux" copy --src-tls-verify=false ${DEST_CREDS} "docker-daemon:${target}" "docker://$target"
 [[ -z "${IMAGE_OUTPUT_FILE}" ]] || echo $target >> ${IMAGE_OUTPUT_FILE}
