@@ -24,7 +24,7 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 @Tag("db2 ")
 @Tag("openshift")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DB2ConnectorIT
+public class OcpDb2ConnectorIT
         extends OcpConnectorTest<SqlDatabaseController>
-        implements OcpKafka, OcpDb2, Db2Connector, DB2lTestCases {
+        implements OcpKafka, OcpDb2, Db2Connector, Db2lTestCases {
 }

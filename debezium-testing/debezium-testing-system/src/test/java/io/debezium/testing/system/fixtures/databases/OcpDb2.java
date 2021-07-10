@@ -26,6 +26,7 @@ public interface OcpDb2 extends TestSetupFixture, SqlDatabaseFixture, OcpClient 
                 .withServices(DB_SERVICE_PATH, DB_SERVICE_PATH_LB)
                 .build();
         SqlDatabaseController controller = deployer.deploy();
+        controller.initialize();
         setDbController(controller);
     }
 

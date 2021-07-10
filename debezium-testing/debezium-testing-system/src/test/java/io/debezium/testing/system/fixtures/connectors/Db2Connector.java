@@ -20,7 +20,7 @@ public interface Db2Connector
     @Override
     default void setupConnector() throws Exception {
         String connectorName = CONNECTOR_NAME + "-" + TestUtils.getUniqueId();
-        ConnectorConfigBuilder connectorConfig = new ConnectorFactories().db2(connectorName);
+        ConnectorConfigBuilder connectorConfig = new ConnectorFactories(getKafkaController()).db2(getDbController(), connectorName);
         decorateConnectorConfig(connectorConfig);
 
         setConnectorConfig(connectorConfig);
@@ -30,6 +30,6 @@ public interface Db2Connector
 
     @Override
     default void teardownConnector() throws Exception {
-        getKafkaConnectController().undeployConnector(getConnectorConfig().getDbServerName());
+        getKafkaConnectController().undeployConnector(getConnectorConfig().getConnectorName());
     }
 }
