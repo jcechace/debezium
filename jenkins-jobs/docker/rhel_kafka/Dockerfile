@@ -64,6 +64,8 @@ RUN rm -rf /tmp/zipped_kafka /tmp/extracted_kafka
 RUN mkdir $KAFKA_HOME/connector-plugins
 COPY $DEBEZIUM_CONNECTORS $KAFKA_HOME/connector-plugins/
 
+COPY metrics.yaml $KAFKA_HOME/config
+
 #
 # Setup original config directories
 #
@@ -74,6 +76,7 @@ RUN mkdir $KAFKA_HOME/config.orig &&\
 
 # Remove unnecessary files
 RUN rm -f $KAFKA_HOME/libs/*-{sources,javadoc,scaladoc}.jar*
+
 
 #
 # Allow random UID to use Kafka
@@ -86,7 +89,6 @@ WORKDIR $KAFKA_HOME
 #
 # Expose the ports and set up volumes for the data and logs directories
 #
-EXPOSE 9092 2181 2888 3888 8083
 VOLUME ["${ZK_DATA}","${KAFKA_DATA}","${KAFKA_HOME}/config", "${KAFKA_CONNECT_PLUGINS}"]
 
 #
