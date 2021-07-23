@@ -25,7 +25,7 @@ import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 @Tag("docker")
 @Tag("rhel")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DockerDb2ConnectorIT
+public class DockerRhelDb2ConnectorIT
         extends DockerConnectorTest<SqlDatabaseController>
         implements DockerKafka, DockerDb2, Db2Connector, Db2lTestCases {
 }

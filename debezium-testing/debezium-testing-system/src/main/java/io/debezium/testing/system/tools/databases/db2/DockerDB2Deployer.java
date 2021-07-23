@@ -9,9 +9,13 @@ import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_DBZ
 import static io.debezium.testing.system.tools.ConfigProperties.DATABASE_DB2_PASSWORD;
 import static io.debezium.testing.system.tools.ConfigProperties.DOCKER_IMAGE_DB2;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Db2Container;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.testing.system.tools.AbstractDockerDeployer;
@@ -50,7 +54,12 @@ public final class DockerDB2Deployer
             container
                     .withDatabaseName(DATABASE_DB2_DBZ_DBNAME)
                     .withPassword(DATABASE_DB2_PASSWORD)
-                    .acceptLicense();
+                    .acceptLicense()
+                    .withEnv("ARCHIVE_LOGS", "true")
+                    .withEnv("AUTOCONFIG", "true")
+                    .withPrivilegedMode(true)
+                    .waitingFor(Wait.forLogMessage(".*CDC setup completed.*", 1))
+                    .withStartupTimeout(Duration.of(15, ChronoUnit.MINUTES));
 
             return new DockerDB2Deployer(container);
         }

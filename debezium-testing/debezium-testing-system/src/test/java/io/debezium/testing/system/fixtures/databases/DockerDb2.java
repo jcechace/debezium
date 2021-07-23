@@ -14,7 +14,7 @@ public interface DockerDb2
                 .withNetwork(getNetwork())
                 .build();
         SqlDatabaseController controller = deployer.deploy();
-        controller.initialize();
+        // controller.initialize();
         setDbController(controller);
     }
 

@@ -1,5 +1,11 @@
 package io.debezium.testing.system.tests;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -8,7 +14,7 @@ import org.testcontainers.containers.Network;
 
 import io.debezium.testing.system.fixtures.DockerNetwork;
 import io.debezium.testing.system.fixtures.connectors.MySqlConnector;
-import io.debezium.testing.system.fixtures.databases.DockerMySql;
+import io.debezium.testing.system.fixtures.databases.DockerDb2;
 import io.debezium.testing.system.fixtures.kafka.DockerKafka;
 import io.debezium.testing.system.tools.databases.SqlDatabaseController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
@@ -17,7 +23,7 @@ import io.debezium.testing.system.tools.kafka.KafkaController;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class DockerTest
-        implements DockerKafka, DockerNetwork, DockerMySql, MySqlConnector {
+        implements DockerKafka, DockerNetwork, DockerDb2, MySqlConnector {
 
     private KafkaController kafka;
     private KafkaConnectController connect;
@@ -29,30 +35,42 @@ public class DockerTest
     @BeforeAll
     public void setup() throws Exception {
         setupNetwork();
-        setupKafka();
+        // setupKafka();
         setupDatabase();
-        setupConnector();
+        // setupConnector();
     }
 
     @AfterAll
     public void teardown() throws Exception {
         teardownConnector();
-        teardownKafka();
+        // teardownKafka();
         teardownDatabase();
-        teardownNetwork();
+        // teardownNetwork();
     }
 
     @Test
-    public void test() {
-        System.out.println(kafka.getBootstrapAddress());
-        System.out.println(kafka.getPublicBootstrapAddress());
-        System.out.println(dbController.getDatabaseHostname());
-        System.out.println(dbController.getPublicDatabaseHostname());
-        System.out.println(dbController.getDatabasePort());
-        System.out.println(dbController.getPublicDatabasePort());
-        System.out.println(dbController.getPublicDatabaseUrl());
+    public void test() throws SQLException {
+        execute(getDbController().getPublicDatabaseUrl());
+        // System.out.println(kafka.getBootstrapAddress());
+        // System.out.println(kafka.getPublicBootstrapAddress());
+        // System.out.println(dbController.getDatabaseHostname());
+        // System.out.println(dbController.getPublicDatabaseHostname());
+        // System.out.println(dbController.getDatabasePort());
+        // System.out.println(dbController.getPublicDatabasePort());
+        // System.out.println(dbController.getPublicDatabaseUrl());
 
-        getConnectorMetrics().waitForMySqlSnapshot(connectorConfig.getDbServerName());
+        // getConnectorMetrics().waitForMySqlSnapshot(connectorConfig.getDbServerName());
+    }
+
+    private void execute(String url) throws SQLException {
+        try (Connection con = DriverManager.getConnection(url, "db2inst1", "=Password!")) {
+            Statement statement = con.createStatement();
+            ResultSet res = statement.executeQuery("SELECT * FROM DB2INST1.CUSTOMERS;");
+            while (res.next()) {
+                System.out.println(res.getString(1));
+            }
+
+        }
     }
 
     @Override
