@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 
 /**
@@ -23,7 +24,7 @@ public class MongoUtilIT extends AbstractMongoIT {
                 .build());
 
         primary.execute("shouldConnect", mongo -> {
-            ServerAddress primaryAddress = MongoUtil.getPrimaryAddress(mongo);
+            ServerAddress primaryAddress = MongoUtil.getPreferredAddress(mongo, ReadPreference.primary());
             assertThat(primaryAddress.getHost()).isEqualTo("localhost");
             assertThat(primaryAddress.getPort()).isEqualTo(27017);
         });
