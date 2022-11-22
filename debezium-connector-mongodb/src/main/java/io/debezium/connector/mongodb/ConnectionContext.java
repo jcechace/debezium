@@ -9,7 +9,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,10 +24,7 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoCredential;
 import com.mongodb.ReadPreference;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
-import com.mongodb.connection.ClusterDescription;
-import com.mongodb.connection.ClusterType;
 
 import io.debezium.config.Configuration;
 import io.debezium.function.BlockingConsumer;
@@ -85,10 +81,10 @@ public class ConnectionContext implements AutoCloseable {
                         builder -> builder.heartbeatFrequency(heartbeatFrequencyMs, TimeUnit.MILLISECONDS));
 
         // Use credentials if provided as part of connection String
-        var cs = connectionString();
-        cs
-                .map(ConnectionString::getCredential)
-                .ifPresent(clientBuilder::withCredential);
+        final ConnectionString connectionString = connectionString();
+        if (connectionString.getCredential() != null) {
+            clientBuilder.withCredential(connectionString.getCredential());
+        }
 
         // Use credential if provided as properties
         if (username != null || password != null) {
@@ -140,30 +136,12 @@ public class ConnectionContext implements AutoCloseable {
         return false;
     }
 
-    public MongoClient clientFor(ReplicaSet replicaSet) {
-        return clientFor(replicaSet.addresses());
-    }
-
-    public MongoClient clientFor(String seedAddresses) {
-        List<ServerAddress> addresses = MongoUtil.parseAddresses(seedAddresses);
-        return clientFor(addresses);
-    }
-
     public MongoClient clientForSeedConnection() {
-        return connectionString()
-                .map(this::clientFor)
-                .orElseGet(() -> clientFor(hosts()));
+        return pool.clientFor(connectionString());
     }
 
-    public MongoClient clientFor(ConnectionString connectionString) {
-        return pool.clientForMembers(connectionString);
-    }
-
-    public MongoClient clientFor(List<ServerAddress> addresses) {
-        if (this.useHostsAsSeeds || addresses.isEmpty()) {
-            return pool.clientForMembers(addresses);
-        }
-        return pool.clientFor(addresses.get(0));
+    private MongoClient clientFor(ReplicaSet replicaSet, ReadPreference preference) {
+        return pool.clientFor(connectionString(), replicaSet, preference);
     }
 
     public String hosts() {
@@ -175,14 +153,17 @@ public class ConnectionContext implements AutoCloseable {
      * @return hosts or connection string
      */
     public String connectionSeed() {
-        return connectionString()
-                .map(ConnectionString::toString)
-                .orElse(config.getString(MongoDbConnectorConfig.HOSTS));
+        String seed = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
+        if (seed == null) {
+            String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
+            var host = ReplicaSet.parseHost(hosts);
+            seed = String.format("mongodb://%s", host);
+        }
+        return seed;
     }
 
-    public Optional<ConnectionString> connectionString() {
-        String raw = config.getString(MongoDbConnectorConfig.CONNECTION_STRING);
-        return Optional.ofNullable(raw).map(ConnectionString::new);
+    private ConnectionString connectionString() {
+        return new ConnectionString(connectionSeed());
     }
 
     public Duration pollInterval() {
@@ -247,7 +228,7 @@ public class ConnectionContext implements AutoCloseable {
      * @return the client, or {@code null} if no primary could be found for the replica set
      */
     protected Supplier<MongoClient> preferredClientFor(ReplicaSet replicaSet, ReadPreference preference, PreferredConnectFailed handler) {
-        Supplier<MongoClient> factory = () -> clientForPreferred(replicaSet, preference);
+        Supplier<MongoClient> factory = () -> clientFor(replicaSet, preference);
         int maxAttempts = config.getInteger(MongoDbConnectorConfig.MAX_FAILED_CONNECTIONS);
         return () -> {
             int attempts = 0;
@@ -329,17 +310,6 @@ public class ConnectionContext implements AutoCloseable {
          */
         public ReadPreference getPreference() {
             return preference;
-        }
-
-        /**
-         * Get the address of the node with preferred type, if there is one.
-         *
-         * @return the address of the replica set's preferred node, or {@code null} if there is currently no node of preferred type
-         */
-        public ServerAddress address() {
-            return execute("get replica set " + preference.getName(), client -> {
-                return MongoUtil.getPreferredAddress(client, preference);
-            });
         }
 
         /**
@@ -493,31 +463,5 @@ public class ConnectionContext implements AutoCloseable {
         public void stop() {
             running.set(false);
         }
-    }
-
-    /**
-     * Obtain a client that talks only to the primary node of the replica set.
-     *
-     * @param replicaSet the replica set information; may not be null
-     * @return the client, or {@code null} if no primary could be found for the replica set
-     */
-    protected MongoClient clientForPreferred(ReplicaSet replicaSet, ReadPreference preference) {
-        MongoClient replicaSetClient = clientFor(replicaSet);
-        final ClusterDescription clusterDescription = MongoUtil.clusterDescription(replicaSetClient);
-        if (clusterDescription.getType() == ClusterType.UNKNOWN) {
-            if (!this.useHostsAsSeeds) {
-                // No replica set status is available, but it may still be a replica set ...
-                return replicaSetClient;
-            }
-            // This is not a replica set, so there will be no oplog to read ...
-            throw new ConnectException("The MongoDB server(s) at '" + replicaSet +
-                    "' is not a valid replica set and cannot be used");
-        }
-        // It is a replica set ...
-        ServerAddress preferredAddress = MongoUtil.getPreferredAddress(replicaSetClient, preference);
-        if (preferredAddress != null) {
-            return pool.clientFor(preferredAddress);
-        }
-        return null;
     }
 }

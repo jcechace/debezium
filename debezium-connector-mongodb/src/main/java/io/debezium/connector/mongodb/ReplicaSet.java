@@ -5,14 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.mongodb.ServerAddress;
 
 import io.debezium.annotation.Immutable;
 
@@ -40,39 +35,32 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
             if (matcher.matches()) {
                 String shard = matcher.group(3);
                 String replicaSetName = matcher.group(5);
-                String host = matcher.group(6);
-                if (host != null && host.trim().length() != 0) {
-                    return new ReplicaSet(host, replicaSetName, shard);
-                }
+                return new ReplicaSet(replicaSetName, shard);
             }
         }
         return null;
     }
 
-    private final List<ServerAddress> addresses;
+    public static String parseHost(String hosts) {
+        Matcher matcher = HOST_PATTERN.matcher(hosts);
+        if (!matcher.matches()) {
+            return null;
+        }
+        return matcher.group(6);
+    }
+
     private final String replicaSetName;
     private final String shardName;
     private final int hc;
 
-    public ReplicaSet(List<ServerAddress> addresses, String replicaSetName, String shardName) {
-        this.addresses = new ArrayList<>(addresses);
-        this.addresses.sort(ReplicaSet::compareServerAddresses);
-        this.replicaSetName = replicaSetName != null ? replicaSetName.trim() : null;
-        this.shardName = shardName != null ? shardName.trim() : null;
-        this.hc = addresses.hashCode();
+    public ReplicaSet(String replicaSetName) {
+        this(replicaSetName, replicaSetName);
     }
 
-    public ReplicaSet(String addresses, String replicaSetName, String shardName) {
-        this(MongoUtil.parseAddresses(addresses), replicaSetName, shardName);
-    }
-
-    /**
-     * Get the immutable list of server addresses.
-     *
-     * @return the server addresses; never null
-     */
-    public List<ServerAddress> addresses() {
-        return addresses;
+    public ReplicaSet(String replicaSetName, String shardName) {
+        this.replicaSetName = replicaSetName;
+        this.shardName = shardName;
+        this.hc = Objects.hash(replicaSetName, shardName);
     }
 
     /**
@@ -94,24 +82,11 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
     }
 
     /**
-     * Return whether the address(es) represent a standalone server, where the {@link #replicaSetName() replica set name} is
-     * {@code null}. This method returns the opposite of {@link #hasReplicaSetName()}.
-     *
-     * @return {@code true} if this represents the address of a standalone server, or {@code false} if it represents the
-     *         address of a replica set
-     * @see #hasReplicaSetName()
-     */
-    public boolean isStandaloneServer() {
-        return replicaSetName == null;
-    }
-
-    /**
      * Return whether the address(es) represents a replica set, where the {@link #replicaSetName() replica set name} is
-     * not {@code null}. This method returns the opposite of {@link #isStandaloneServer()}.
+     * not {@code null}.
      *
      * @return {@code true} if this represents the address of a replica set, or {@code false} if it represents the
      *         address of a standalone server
-     * @see #isStandaloneServer()
      */
     public boolean hasReplicaSetName() {
         return replicaSetName != null;
@@ -129,8 +104,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
         }
         if (obj instanceof ReplicaSet) {
             ReplicaSet that = (ReplicaSet) obj;
-            return Objects.equals(this.shardName, that.shardName) && Objects.equals(this.replicaSetName, that.replicaSetName) &&
-                    this.addresses.equals(that.addresses);
+            return Objects.equals(this.shardName, that.shardName) && Objects.equals(this.replicaSetName, that.replicaSetName);
         }
         return false;
     }
@@ -140,29 +114,8 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
         if (that == this) {
             return 0;
         }
-        int diff = compareNullable(this.shardName, that.shardName);
-        if (diff != 0) {
-            return diff;
-        }
-        diff = compareNullable(this.replicaSetName, that.replicaSetName);
-        if (diff != 0) {
-            return diff;
-        }
-        Iterator<ServerAddress> thisIter = this.addresses.iterator();
-        Iterator<ServerAddress> thatIter = that.addresses.iterator();
-        while (thisIter.hasNext() && thatIter.hasNext()) {
-            diff = compare(thisIter.next(), thatIter.next());
-            if (diff != 0) {
-                return diff;
-            }
-        }
-        if (thisIter.hasNext()) {
-            return 1;
-        }
-        if (thatIter.hasNext()) {
-            return -1;
-        }
-        return 0;
+
+        return replicaSetName.compareTo(that.replicaSetName);
     }
 
     @Override
@@ -174,48 +127,7 @@ public final class ReplicaSet implements Comparable<ReplicaSet> {
         if (this.replicaSetName != null && !this.replicaSetName.isEmpty()) {
             sb.append(replicaSetName).append('/');
         }
-        Iterator<ServerAddress> iter = addresses.iterator();
-        if (iter.hasNext()) {
-            sb.append(MongoUtil.toString(iter.next()));
-        }
-        while (iter.hasNext()) {
-            sb.append(',').append(MongoUtil.toString(iter.next()));
-        }
         return sb.toString();
-    }
-
-    protected static int compareServerAddresses(ServerAddress one, ServerAddress two) {
-        if (one == two) {
-            return 0;
-        }
-        if (one == null) {
-            return two == null ? 0 : -1;
-        }
-        if (two == null) {
-            return 1;
-        }
-        return compare(one, two);
-    }
-
-    protected static int compareNullable(String str1, String str2) {
-        if (str1 == str2) {
-            return 0;
-        }
-        if (str1 == null) {
-            return str2 == null ? 0 : -1;
-        }
-        if (str2 == null) {
-            return 1;
-        }
-        return str1.compareTo(str2);
-    }
-
-    protected static int compare(ServerAddress address1, ServerAddress address2) {
-        int diff = address1.getHost().compareTo(address2.getHost());
-        if (diff != 0) {
-            return diff;
-        }
-        return address1.getPort() - address2.getPort();
     }
 
 }

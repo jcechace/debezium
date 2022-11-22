@@ -13,8 +13,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import com.mongodb.ReadPreference;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
@@ -258,7 +256,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 final CollectionId currentDataCollectionId = context.currentDataCollectionId().getId();
                 currentCollection = (MongoDbCollectionSchema) collectionSchema.schemaFor(currentDataCollectionId);
                 if (replicaSets.all().size() > 1) {
-                    LOGGER.warn("Incremental snapshotting supported only for single result set topology, skipping collection '{}', known collections {}",
+                    LOGGER.warn("Incremental snapshotting supported only for single replica set topology, skipping collection '{}', known collections {}",
                             currentDataCollectionId);
                     nextDataCollection(partition);
                     continue;

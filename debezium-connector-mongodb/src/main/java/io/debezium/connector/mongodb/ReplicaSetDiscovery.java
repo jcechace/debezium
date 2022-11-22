@@ -6,20 +6,16 @@
 package io.debezium.connector.mongodb;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
 import com.mongodb.MongoInterruptedException;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
-import com.mongodb.connection.ServerConnectionState;
 import com.mongodb.connection.ServerDescription;
 
 import io.debezium.annotation.ThreadSafe;
@@ -79,7 +75,14 @@ public class ReplicaSetDiscovery {
                     String shardName = doc.getString("_id");
                     String hostStr = doc.getString("host");
                     String replicaSetName = MongoUtil.replicaSetUsedIn(hostStr);
-                    replicaSetSpecs.add(new ReplicaSet(hostStr, replicaSetName, shardName));
+                    if (replicaSetName != null) {
+                        replicaSetSpecs.add(new ReplicaSet(replicaSetName, shardName));
+                    }
+                    else {
+                        // As of MongoDB 3.6, shards must be deployed as a replica set
+                        // https://www.mongodb.com/docs/manual/core/sharded-cluster-shards/
+                        LOGGER.info("Shard {} of {} is skipped due to not being a replica set", shardName, connectionSeed);
+                    }
                 });
             }
             catch (MongoInterruptedException e) {
@@ -94,17 +97,17 @@ public class ReplicaSetDiscovery {
         }
 
         if (clusterDescription.getType() == ClusterType.REPLICA_SET) {
-            LOGGER.info("Checking current members of replica set at {}", connectionSeed);
-            final List<ServerDescription> serverDescriptions = clusterDescription.getServerDescriptions().stream()
-                    .filter(x -> x.getState() == ServerConnectionState.CONNECTED).collect(Collectors.toList());
-            if (serverDescriptions.size() == 0) {
-                LOGGER.warn("Server descriptions not available, got '{}'", serverDescriptions);
-            }
-            else {
-                List<ServerAddress> addresses = serverDescriptions.stream().map(ServerDescription::getAddress).collect(Collectors.toList());
-                String replicaSetName = serverDescriptions.get(0).getSetName();
-                replicaSetSpecs.add(new ReplicaSet(addresses, replicaSetName, null));
-            }
+            LOGGER.info("Checking current members of replica set at '{}'", connectionSeed);
+            var serverDescriptions = clusterDescription.getServerDescriptions();
+
+            var replicaSet = serverDescriptions.stream()
+                    .findFirst()
+                    .map(ServerDescription::getSetName)
+                    .map(ReplicaSet::new);
+
+            replicaSet.ifPresentOrElse(
+                    replicaSetSpecs::add,
+                    () -> LOGGER.warn("Unable to get name of replica set at '{}'", connectionSeed));
         }
 
         if (replicaSetSpecs.isEmpty()) {

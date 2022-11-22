@@ -73,8 +73,7 @@ public class ReplicaSetDiscoveryTest {
         when(mongoClient.getClusterDescription()).thenReturn(clusterDescription);
 
         ReplicaSets replicaSets = replicaSetDiscovery.getReplicaSets();
-        assertThat(replicaSets.validReplicaSets().size()).isEqualTo(1);
-        assertThat(replicaSets.validReplicaSets().get(0).replicaSetName()).isEqualTo("my_rs");
-        assertThat(replicaSets.validReplicaSets().get(0).addresses()).isEqualTo(List.of(host2Address));
+        assertThat(replicaSets.all().size()).isEqualTo(1);
+        assertThat(replicaSets.all().get(0).replicaSetName()).isEqualTo("my_rs");
     }
 }

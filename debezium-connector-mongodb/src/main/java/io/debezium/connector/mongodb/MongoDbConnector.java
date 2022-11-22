@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -101,12 +101,22 @@ public class MongoDbConnector extends SourceConnector {
     @Override
     public void start(Map<String, String> props) {
         // Validate the configuration ...
-        final Configuration config = Configuration.from(props);
-        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+        final Configuration originalConfig = Configuration.from(props);
+
+        if (!originalConfig.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
             throw new ConnectException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
 
-        this.config = config;
+        String connectionString = originalConfig.getString(MongoDbConnectorConfig.CONNECTION_STRING);
+        if (connectionString == null) {
+            String hosts = originalConfig.getString(MongoDbConnectorConfig.HOSTS);
+            var host = ReplicaSet.parseHost(hosts);
+            connectionString = String.format("mongodb://%s", host);
+        }
+
+        this.config = originalConfig.edit()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
+                .build();
 
         // Set up the replication context ...
         taskContext = new MongoDbTaskContext(config);
@@ -152,15 +162,16 @@ public class MongoDbConnector extends SourceConnector {
             ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
             if (replicaSets != null) {
                 logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                        replicaSets.replicaSetCount(), maxTasks);
+                        replicaSets.size(), maxTasks);
                 replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
                     // Create the configuration for each task ...
                     int taskId = taskConfigs.size();
-                    logger.info("Configuring MongoDB connector task {} to capture events for replica set(s) at {}", taskId, replicaSetsForTask.hosts());
-                    Properties configProps = config.asProperties();
-                    configProps.remove(MongoDbConnectorConfig.CONNECTION_STRING.name());
+                    String replicaSetNames = replicaSetsForTask.all().stream()
+                            .map(ReplicaSet::replicaSetName)
+                            .collect(Collectors.joining(","));
+                    logger.info("Configuring MongoDB connector task {} to capture events for replica set(s): {}", taskId, replicaSetNames);
                     taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.HOSTS, replicaSetsForTask.hosts())
+                            .with(MongoDbConnectorConfig.REPLICA_SETS, replicaSetNames)
                             .with(MongoDbConnectorConfig.TASK_ID, taskId)
                             .build()
                             .asMap());

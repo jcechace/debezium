@@ -237,6 +237,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDescription("The hostname and port pairs (in the form 'host' or 'host:port') "
                     + "of the MongoDB server(s) in the replica set.");
 
+    /**
+     * The comma-separated list of hostname and port pairs (in the form 'host' or 'host:port') of the MongoDB servers in the
+     * replica set.
+     */
+    public static final Field REPLICA_SETS = Field.create("mongodb.replica.sets")
+            .withDescription("Internal use only")
+            .withType(Type.LIST);
+
     public static final Field AUTO_DISCOVER_MEMBERS = Field.create("mongodb.members.auto.discover")
             .withDisplayName("Auto-discovery")
             .withType(Type.BOOLEAN)
@@ -244,7 +252,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
-            .withValidation(Field::isBoolean, MongoDbConnectorConfig::validateAutodiscovery)
+            .withValidation(Field::isBoolean)
             .withDescription("Specifies whether the addresses in 'hosts' are seeds that should be "
                     + "used to discover all members of the cluster or replica set ('true'), "
                     + "or whether the address(es) in 'hosts' should be used as is ('false'). "
@@ -585,16 +593,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         String connectionString = config.getString(CONNECTION_STRING);
 
         if (hosts == null && connectionString == null) {
-            problems.accept(field, hosts, "Host specification or connection string is required");
+            problems.accept(field, null, "Host specification or connection string is required");
             return 1;
         }
 
-        int count = 0;
-        if (hosts != null && ReplicaSets.parse(hosts).all().isEmpty()) {
-            problems.accept(field, hosts, "Invalid host specification");
-            ++count;
-        }
-        return count;
+        return 0;
     }
 
     private static int validateConnectionString(Configuration config, Field field, ValidationOutput problems) {
@@ -607,15 +610,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
         }
         catch (Exception e) {
             problems.accept(field, value, "Connection string is invalid");
-            return 1;
-        }
-        return 0;
-    }
-
-    private static int validateAutodiscovery(Configuration config, Field field, ValidationOutput problems) {
-        boolean value = config.getBoolean(field);
-        if (!value && config.hasKey(CONNECTION_STRING)) {
-            problems.accept(field, value, "Connection string requires autodiscovery");
             return 1;
         }
         return 0;

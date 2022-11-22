@@ -1010,6 +1010,26 @@ public interface Configuration {
      */
     public String getString(String key);
 
+    default List<String> getList(Field field) {
+        return getList(field.name());
+    }
+
+    default List<String> getList(String key) {
+        return getList(key, Function.identity());
+    }
+
+    default <T> List<T> getList(Field field, Function<String, T> converter) {
+        return getList(field.name(), converter);
+    }
+
+    default <T> List<T> getList(String key, Function<String, T> converter) {
+        var value = getString(key);
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .map(converter)
+                .collect(Collectors.toList());
+    }
+
     /**
      * Get the string value associated with the given key, returning the default value if there is no such key-value pair.
      *

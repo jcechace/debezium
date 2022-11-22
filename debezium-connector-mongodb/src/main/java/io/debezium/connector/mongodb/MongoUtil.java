@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -20,7 +19,6 @@ import org.bson.Document;
 import org.slf4j.Logger;
 
 import com.mongodb.MongoQueryException;
-import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -30,9 +28,7 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
-import com.mongodb.connection.ServerDescription;
 
-import io.debezium.DebeziumException;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Strings;
 
@@ -367,27 +363,6 @@ public class MongoUtil {
 
     protected static String toString(List<ServerAddress> addresses) {
         return Strings.join(ADDRESS_DELIMITER, addresses);
-    }
-
-    protected static ServerAddress getPreferredAddress(MongoClient client, ReadPreference preference) {
-        ClusterDescription clusterDescription = clusterDescription(client);
-
-        if (!clusterDescription.hasReadableServer(preference)) {
-            throw new DebeziumException("Unable to use cluster description from MongoDB connection: " + clusterDescription);
-        }
-
-        List<ServerDescription> serverDescriptions = preference.choose(clusterDescription);
-
-        if (serverDescriptions.size() == 0) {
-            throw new DebeziumException("Unable to read server descriptions from MongoDB connection (Null or empty list).");
-        }
-
-        Optional<ServerDescription> preferredDescription = serverDescriptions.stream().findFirst();
-
-        return preferredDescription
-                .map(ServerDescription::getAddress)
-                .map(address -> new ServerAddress(address.getHost(), address.getPort()))
-                .orElseThrow(() -> new DebeziumException("Unable to find primary from MongoDB connection, got '" + serverDescriptions + "'"));
     }
 
     /**

@@ -174,10 +174,10 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     private ReplicaSets getReplicaSets(Configuration config) {
-        final String hosts = config.getString(MongoDbConnectorConfig.HOSTS);
-        final ReplicaSets replicaSets = ReplicaSets.parse(hosts);
-        if (replicaSets.validReplicaSetCount() == 0) {
-            throw new ConnectException("Unable to start MongoDB connector task since no replica sets were found at " + hosts);
+        var replicas = config.getList(MongoDbConnectorConfig.REPLICA_SETS, ReplicaSet::new);
+        final ReplicaSets replicaSets = new ReplicaSets(replicas);
+        if (replicaSets.size() == 0) {
+            throw new ConnectException("Unable to start MongoDB connector task since no replica sets were found");
         }
         return replicaSets;
     }

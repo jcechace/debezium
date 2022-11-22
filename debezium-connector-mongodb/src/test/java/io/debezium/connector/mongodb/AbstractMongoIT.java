@@ -71,7 +71,7 @@ public abstract class AbstractMongoIT implements Testing {
         }
 
         context = new MongoDbTaskContext(config);
-        assertThat(context.getConnectionContext().hosts()).isNotEmpty();
+        assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
 
         replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
         context.configureLoggingContext(replicaSet.replicaSetName());

@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ReadPreference;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCursor;
@@ -84,7 +83,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext)
             throws InterruptedException {
-        final List<ReplicaSet> validReplicaSets = replicaSets.validReplicaSets();
+        final List<ReplicaSet> validReplicaSets = replicaSets.all();
 
         if (offsetContext == null) {
             offsetContext = initializeOffsets(connectorConfig, partition, replicaSets);
@@ -200,8 +199,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         ReplicaSetChangeStreamsContext oplogContext = new ReplicaSetChangeStreamsContext(rsPartition, rsOffsetContext, mongo, replicaSet);
 
-        final ServerAddress nodeAddress = MongoUtil.getPreferredAddress(client, mongo.getPreference());
-        LOGGER.info("Reading change stream for '{}'/{} from {} starting at {}", replicaSet, mongo.getPreference().getName(), nodeAddress, oplogStart);
+        LOGGER.info("Reading change stream for '{}'/{} starting at {}", replicaSet, mongo.getPreference().getName(), oplogStart);
 
         Bson filters = Filters.in("operationType", getChangeStreamSkippedOperationsFilter());
         if (rsOffsetContext.lastResumeToken() == null) {
