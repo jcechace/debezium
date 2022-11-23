@@ -32,7 +32,6 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -110,7 +109,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         return fullDataCollectionNames().stream().map(x -> "mongo1." + x).collect(Collectors.toList());
     }
 
-    protected void populateDataCollection(MongoPrimary connection, String dataCollectionName) {
+    protected void populateDataCollection(RetryingMongoClient connection, String dataCollectionName) {
         final Document[] documents = new Document[ROW_COUNT];
         for (int i = 0; i < ROW_COUNT; i++) {
             final Document doc = new Document();
@@ -120,11 +119,11 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         insertDocumentsInTx(DATABASE_NAME, dataCollectionName, documents);
     }
 
-    protected void populateDataCollection(MongoPrimary connection) {
+    protected void populateDataCollection(RetryingMongoClient connection) {
         populateDataCollection(connection, dataCollectionName());
     }
 
-    protected void populateDataCollections(MongoPrimary connection) {
+    protected void populateDataCollections(RetryingMongoClient connection) {
         for (String dataCollectionName : dataCollectionNames()) {
             populateDataCollection(connection, dataCollectionName);
         }

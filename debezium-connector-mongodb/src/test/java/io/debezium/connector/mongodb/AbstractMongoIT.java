@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.util.Testing;
 
 public abstract class AbstractMongoIT implements Testing {
@@ -25,7 +24,7 @@ public abstract class AbstractMongoIT implements Testing {
     protected Configuration config;
     protected MongoDbTaskContext context;
     protected ReplicaSet replicaSet;
-    protected MongoPrimary primary;
+    protected RetryingMongoClient primary;
 
     @Before
     public void beforeEach() {
@@ -73,7 +72,7 @@ public abstract class AbstractMongoIT implements Testing {
         context = new MongoDbTaskContext(config);
         assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
 
-        replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
+        replicaSet = HostUtils.parse(context.getConnectionContext().hosts());
         context.configureLoggingContext(replicaSet.replicaSetName());
 
         // Restore Source position (if there are some) ...

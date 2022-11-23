@@ -30,7 +30,6 @@ import com.mongodb.client.MongoDatabase;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 
 /**
  * A common test configuration options
@@ -52,8 +51,8 @@ public class TestHelper {
         return cfgBuilder.build();
     }
 
-    public static MongoPrimary primary(MongoDbTaskContext context) {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
+    public static RetryingMongoClient primary(MongoDbTaskContext context) {
+        ReplicaSet replicaSet = HostUtils.parse(context.getConnectionContext().hosts());
         return context.getConnectionContext().primaryFor(replicaSet, context.filters(), connectionErrorHandler(3));
     }
 
@@ -67,7 +66,7 @@ public class TestHelper {
         };
     }
 
-    public static void cleanDatabase(MongoPrimary primary, String dbName) {
+    public static void cleanDatabase(RetryingMongoClient primary, String dbName) {
         primary.execute("clean-db", mongo -> {
             MongoDatabase db1 = mongo.getDatabase(dbName);
             db1.listCollectionNames().forEach((Consumer<String>) ((String x) -> {
@@ -77,7 +76,7 @@ public class TestHelper {
         });
     }
 
-    public static Document databaseInformation(MongoPrimary primary, String dbName) {
+    public static Document databaseInformation(RetryingMongoClient primary, String dbName) {
         final AtomicReference<Document> ret = new AtomicReference<>();
         primary.execute("clean-db", mongo -> {
             MongoDatabase db1 = mongo.getDatabase(dbName);
@@ -88,19 +87,19 @@ public class TestHelper {
         return ret.get();
     }
 
-    public static List<Integer> getVersionArray(MongoPrimary primary, String dbName) {
+    public static List<Integer> getVersionArray(RetryingMongoClient primary, String dbName) {
         final Document serverInfo = databaseInformation(primary, dbName);
         @SuppressWarnings("unchecked")
         final List<Integer> version = (List<Integer>) serverInfo.get("versionArray");
         return version;
     }
 
-    public static boolean transactionsSupported(MongoPrimary primary, String dbName) {
+    public static boolean transactionsSupported(RetryingMongoClient primary, String dbName) {
         final List<Integer> version = getVersionArray(primary, dbName);
         return version.get(0) >= 4;
     }
 
-    public static boolean decimal128Supported(MongoPrimary primary, String dbName) {
+    public static boolean decimal128Supported(RetryingMongoClient primary, String dbName) {
         final List<Integer> version = getVersionArray(primary, dbName);
         return (version.get(0) >= 4) || (version.get(0) == 3 && version.get(1) >= 4);
     }

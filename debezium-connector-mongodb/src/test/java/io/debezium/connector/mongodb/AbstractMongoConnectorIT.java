@@ -35,7 +35,6 @@ import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Collect;
@@ -262,7 +261,7 @@ public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
         });
     }
 
-    protected MongoPrimary primary() {
+    protected RetryingMongoClient primary() {
         return TestHelper.primary(context);
     }
 

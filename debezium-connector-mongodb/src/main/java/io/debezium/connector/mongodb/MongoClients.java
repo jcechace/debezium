@@ -111,7 +111,6 @@ public class MongoClients {
     }
 
     protected MongoClient connection(MongoClientSettings settings) {
-        return connections.computeIfAbsent(settings, s -> com.mongodb.client.MongoClients.create(s));
+        return connections.computeIfAbsent(settings, com.mongodb.client.MongoClients::create);
     }
-
 }

@@ -110,7 +110,7 @@ public class MongoDbConnector extends SourceConnector {
         String connectionString = originalConfig.getString(MongoDbConnectorConfig.CONNECTION_STRING);
         if (connectionString == null) {
             String hosts = originalConfig.getString(MongoDbConnectorConfig.HOSTS);
-            var host = ReplicaSet.parseHost(hosts);
+            var host = HostUtils.parseHost(hosts);
             connectionString = String.format("mongodb://%s", host);
         }
 
@@ -166,7 +166,7 @@ public class MongoDbConnector extends SourceConnector {
                 replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
                     // Create the configuration for each task ...
                     int taskId = taskConfigs.size();
-                    String replicaSetNames = replicaSetsForTask.all().stream()
+                    String replicaSetNames = replicaSetsForTask.stream()
                             .map(ReplicaSet::replicaSetName)
                             .collect(Collectors.joining(","));
                     logger.info("Configuring MongoDB connector task {} to capture events for replica set(s): {}", taskId, replicaSetNames);

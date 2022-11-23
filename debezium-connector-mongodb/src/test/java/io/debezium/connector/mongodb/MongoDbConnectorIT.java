@@ -51,7 +51,6 @@ import com.mongodb.client.model.InsertOneOptions;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -1368,8 +1367,8 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 
-    protected MongoPrimary primary() {
-        ReplicaSet replicaSet = ReplicaSet.parse(context.getConnectionContext().hosts());
+    protected RetryingMongoClient primary() {
+        ReplicaSet replicaSet = HostUtils.parse(context.getConnectionContext().hosts());
         return context.getConnectionContext().primaryFor(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
     }
 
@@ -1459,7 +1458,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         // Set up the replication context for connections ...
         context = new MongoDbTaskContext(config);
 
-        final MongoPrimary primary = primary();
+        final RetryingMongoClient primary = primary();
         primary.executeBlocking("Try SSL connection", mongo -> {
             primary.stop();
             mongo.getDatabase("dbit").listCollectionNames().first();

@@ -8,12 +8,8 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.util.ConnectorUtils;
 
@@ -28,8 +24,6 @@ import io.debezium.util.Strings;
 @Immutable
 public class ReplicaSets {
 
-    private static final Pattern REPLICA_DELIMITER_PATTERN = Pattern.compile(";");
-
     /**
      * Get an instance that contains no replica sets.
      *
@@ -39,7 +33,6 @@ public class ReplicaSets {
         return new ReplicaSets(null);
     }
 
-    private final Map<String, ReplicaSet> replicaSetsByName = new HashMap<>();
     private final List<ReplicaSet> replicaSets = new ArrayList<>();
 
     /**
@@ -78,16 +71,9 @@ public class ReplicaSets {
      * @param maxSubdivisionCount the maximum number of subdivisions
      * @param subdivisionConsumer the function to be called with each subdivision; may not be null
      */
-    public void subdivide(int maxSubdivisionCount, Consumer<ReplicaSets> subdivisionConsumer) {
+    public void subdivide(int maxSubdivisionCount, Consumer<List<ReplicaSet>> subdivisionConsumer) {
         int numGroups = Math.min(size(), maxSubdivisionCount);
-        if (numGroups <= 1) {
-            // Just one replica set or subdivision ...
-            subdivisionConsumer.accept(this);
-            return;
-        }
-        ConnectorUtils.groupPartitions(all(), numGroups).forEach(rsList -> {
-            subdivisionConsumer.accept(new ReplicaSets(rsList));
-        });
+        ConnectorUtils.groupPartitions(all(), numGroups).forEach(subdivisionConsumer);
     }
 
     /**
@@ -96,21 +82,7 @@ public class ReplicaSets {
      * @return the replica set objects; never null but possibly empty
      */
     public List<ReplicaSet> all() {
-        List<ReplicaSet> replicaSets = new ArrayList<>();
-        replicaSets.addAll(replicaSetsByName.values());
-        replicaSets.addAll(this.replicaSets);
-        return replicaSets;
-    }
-
-    /**
-     * Get a copy of all of the {@link ReplicaSet} objects that have no names.
-     *
-     * @return the unnamed replica set objects; never null but possibly empty
-     */
-    public List<ReplicaSet> unnamedReplicaSets() {
-        List<ReplicaSet> replicaSets = new ArrayList<>();
-        replicaSets.addAll(this.replicaSets);
-        return replicaSets;
+        return new ArrayList<>(this.replicaSets);
     }
 
     /**
@@ -125,7 +97,7 @@ public class ReplicaSets {
 
     @Override
     public int hashCode() {
-        return Objects.hash(replicaSetsByName, replicaSets);
+        return replicaSets.hashCode();
     }
 
     @Override
@@ -135,7 +107,7 @@ public class ReplicaSets {
         }
         if (obj instanceof ReplicaSets) {
             ReplicaSets that = (ReplicaSets) obj;
-            return this.replicaSetsByName.equals(that.replicaSetsByName) && this.replicaSets.equals(that.replicaSets);
+            return this.replicaSets.equals(that.replicaSets);
         }
         return false;
     }

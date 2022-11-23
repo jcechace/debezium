@@ -30,7 +30,6 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPrimary;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.util.IoUtil;
@@ -284,7 +283,7 @@ public class MongoDbConnectorWithConnectionStringIT extends AbstractMongoConnect
     }
 
     @Override
-    protected MongoPrimary primary() {
+    protected RetryingMongoClient primary() {
         var discovery = new ReplicaSetDiscovery(context);
         var sets = discovery.getReplicaSets();
         var replicaSet = sets.all().get(0);

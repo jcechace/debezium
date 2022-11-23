@@ -26,7 +26,6 @@ import com.mongodb.client.MongoDatabase;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.mongodb.ConnectionContext.MongoPreferredNode;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.CloseIncrementalSnapshotWindow;
@@ -70,7 +69,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     protected EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     protected IncrementalSnapshotContext<CollectionId> context = null;
     protected final Map<Struct, Object[]> window = new LinkedHashMap<>();
-    private MongoPreferredNode mongo;
+    private RetryingMongoClient mongo;
     private CollectionId signallingCollectionId;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
@@ -531,7 +530,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    private MongoPreferredNode establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
+    private RetryingMongoClient establishConnection(MongoDbPartition partition, ReadPreference preference, ReplicaSet replicaSet) {
         return connectionContext.preferredFor(replicaSet, preference, taskContext.filters(), (desc, error) -> {
             // propagate authorization failures
             if (error.getMessage() != null && error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
