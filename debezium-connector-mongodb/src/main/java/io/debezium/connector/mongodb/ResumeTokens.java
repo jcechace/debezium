@@ -7,13 +7,20 @@ package io.debezium.connector.mongodb;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Base64;
 
+import org.bson.BsonBinaryReader;
+import org.bson.BsonBinaryWriter;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.BsonValue;
 
 import io.debezium.util.HexConverter;
+import org.bson.codecs.BsonDocumentCodec;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
 
 /**
  * Utilities for working with MongoDB <a href="https://www.mongodb.com/docs/manual/changeStreams/#std-label-change-stream-resume">resume tokens</a>.
@@ -45,12 +52,29 @@ public final class ResumeTokens {
         return resumeToken.get("_data");
     }
 
-    public static String getDataString(BsonDocument resumeToken) {
-        return getData(resumeToken).asString().getValue();
-    }
-
     public static BsonDocument fromData(String data) {
         return (data == null) ? null : new BsonDocument("_data", new BsonString(data));
+    }
+
+    public static String toBase64(BsonDocument resumeToken) {
+        // encode as base64
+        var out = new BasicOutputBuffer();
+        var writer = new BsonBinaryWriter(out);
+        var codec = new BsonDocumentCodec();
+        var context = EncoderContext.builder().build();
+
+        codec.encode(writer, resumeToken, context);
+        return Base64.getEncoder().encodeToString(out.toByteArray());
+    }
+
+    public static BsonDocument fromBase64(String input) {
+        // encode as base64
+        var bytes = Base64.getDecoder().decode(input);
+        var reader = new BsonBinaryReader(ByteBuffer.wrap(bytes));
+        var codec = new BsonDocumentCodec();
+        var context = DecoderContext.builder().build();
+
+        return codec.decode(reader, context);
     }
 
     private static byte[] getDataBytes(BsonValue data) {

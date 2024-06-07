@@ -204,10 +204,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
         if (offsetContext.lastResumeToken() != null) {
             LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
-
-            final BsonDocument doc = new BsonDocument();
-            doc.put("_data", new BsonString(offsetContext.lastResumeToken()));
-            stream.resumeAfter(doc);
+            stream.resumeAfter(offsetContext.lastResumeTokenDoc());
         }
         else if (offsetContext.lastTimestamp() != null) {
             LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());

@@ -163,8 +163,8 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public BsonDocument lastResumeTokenDoc() {
-        final String data = sourceInfo.lastResumeToken();
-        return (data == null) ? null : ResumeTokens.fromData(data);
+        final String token = sourceInfo.lastResumeToken();
+        return (token == null) ? null : ResumeTokens.fromBase64(token);
     }
 
     public BsonTimestamp lastTimestamp() {
